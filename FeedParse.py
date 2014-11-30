@@ -39,6 +39,7 @@ class TwitterUserFeed:
                             else 20 if max_tweets <= 0 else 200 ## Catch dumb users
         self.auth = auth
         self.tweets = None
+        self.feed = None
         
     def getTweets(self):
         ## Cached if already run for this user
@@ -48,14 +49,6 @@ class TwitterUserFeed:
         ## Else go grab 'em
         try:
             feed = api.user_timeline(screen_name = self.username, count=self.max_tweets)
-            '''
-            tweets = list()
-            for tweet in feed:
-                parsed_tweet = self._parseUserTweetsToJson_(tweet)
-                tweets.append(parsed_tweet)
-            self.tweets = tweets
-            '''
-            
             self.feed = feed
             return feed
             #return tweets
@@ -93,15 +86,20 @@ class TwitterUserFeed:
         s = ' '.join(ch for ch in s if not ('httptco' in ch or 'httpstco' in ch) )
         return s
     
-    ## DEPRECATED
-    def _writeTweetsToCsv(self):
-        parsed = self.getTweets()
-        if not parsed or len(parsed)==0:
+    def writeTweetsToCsv(self):
+        json = self.getTweets()
+        tweets = list()
+        for tweet in json:
+            parsed_tweet = self._parseUserTweetsToJson_(tweet)
+            tweets.append(parsed_tweet)
+        
+        if not tweets or len(tweets)==0:
             raise ("No tweets to write")
+        
         with open(self.username + '_TwitterFeed.csv' , 'w') as output:
             writer = csv.writer(output, delimiter= ',', lineterminator = '\n')
             writer.writerow(['User','Date','Text','Retweeted'])
-            writer.writerows(parsed)
+            writer.writerows(tweets)
             
     def writeTweetsToJson(self):
         tweets = self.getTweets()
@@ -119,6 +117,7 @@ if __name__ == '__main__':
     
     t = TwitterUserFeed(auth, UserName, maxTweets)
     t.writeTweetsToJson()
+    #t.writeTweetsToCsv() # << If you want to write it to CSV
     
     runtime = str(time.time() - startTime) + " seconds"
     #print runtime
