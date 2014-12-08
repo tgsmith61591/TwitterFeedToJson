@@ -1,12 +1,18 @@
-import time, sys, string, csv, re, io
+import time, sys, string, csv, re, io, os
 import tweepy
 from tweepy.parsers import JSONParser
 startTime = time.time()
 
 #-----------------Preference Section:-----------------#
+def parseBool(arg):
+    punct = ['-','--','\'',"\""]
+    a = ''.join([ch for ch in str(arg) if not ch in punct]).lower()
+    return a == 't' or a == 'true'
+    
 ## Username:
 UserName = sys.argv[1] if len(sys.argv) > 0 else None
 maxTweets= sys.argv[2] if len(sys.argv) > 1 else None
+writeCsv = parseBool(sys.argv[3]) if len(sys.argv) > 2 else True
 auth = None
 api = None
 
@@ -31,6 +37,7 @@ def _authorize():
     api = tweepy.API(auth, parser=JSONParser())
     
 
+#-----------------Clas def Section:-----------------#
 class TwitterUserFeed:
     ## Note: max_tweets cannot be greater than 200
     def __init__(self, auth, username, max_tweets):
@@ -38,8 +45,9 @@ class TwitterUserFeed:
         self.max_tweets = max_tweets if (max_tweets <= 200 and max_tweets > 0)\
                             else 20 if max_tweets <= 0 else 200 ## Catch dumb users
         self.auth = auth
-        self.tweets = None
-        self.feed = None
+        self.tweets = None  ## Init null
+        self.feed = None    ## Init null
+        self.headers = None ## Csv headers, init null
         
     def getTweets(self):
         ## Cached if already run for this user
@@ -55,16 +63,17 @@ class TwitterUserFeed:
         except:
             print "There was a problem accessing", self.username+"'s feed."
         
-    def _parseUserTweetsToJson_(self, json):
+    def _parseUserTweetsToCsv_(self, json):
         ## Name, text
         parsed = list()
-        
-        name = str(json['user']['screen_name'])
-        date = str(json['created_at'])
-        text = str( self._removeUrls(self._removePunct(self._removeNonAscii(json['text']))) )
-        rtwtd= str(json['retweeted'])
-        
-        parsed.extend([name,date,text,rtwtd])
+        for key in self.headers:
+            ## print key
+            if key == 'text':
+                parsed.append( str(self._removePunct(self._removeNonAscii(json[key]))) )
+            elif key == 'user':
+                parsed.append( str(json[key]['screen_name']) )
+            else:
+                parsed.append(str(json[key]))
         return parsed
         
     def _removeNonAscii(self, s): ## Clean up the unparseables
@@ -89,8 +98,13 @@ class TwitterUserFeed:
     def writeTweetsToCsv(self):
         json = self.getTweets()
         tweets = list()
+        
+        removes = ['entities','possibly_sensitive'] ## Headers we don't want
+        headers = json[0].keys()
+        self.headers = [k for k in headers if not k in removes]
+        
         for tweet in json:
-            parsed_tweet = self._parseUserTweetsToJson_(tweet)
+            parsed_tweet = self._parseUserTweetsToCsv_(tweet)
             tweets.append(parsed_tweet)
         
         if not tweets or len(tweets)==0:
@@ -98,13 +112,17 @@ class TwitterUserFeed:
         
         with open(self.username + '_TwitterFeed.csv' , 'w') as output:
             writer = csv.writer(output, delimiter= ',', lineterminator = '\n')
-            writer.writerow(['User','Date','Text','Retweeted'])
+            writer.writerow(self.headers)
             writer.writerows(tweets)
             
     def writeTweetsToJson(self):
         tweets = self.getTweets()
+        jsonOut = '['
+        for tweet in tweets:
+            jsonOut+=str(tweet)+os.linesep
+        jsonOut += ']'
         with io.open(self.username+'_TwitterFeed.json','w') as output:
-            output.write(unicode(tweets))
+            output.write(unicode(jsonOut))
 
 #-----------------Define Main:-----------------#   
 if __name__ == '__main__':
@@ -117,9 +135,10 @@ if __name__ == '__main__':
     
     t = TwitterUserFeed(auth, UserName, maxTweets)
     t.writeTweetsToJson()
-    #t.writeTweetsToCsv() # << If you want to write it to CSV
+    if writeCsv: ## third command line arg
+        t.writeTweetsToCsv()
     
-    runtime = str(time.time() - startTime) + " seconds"
-    #print runtime
+    runtime = "Completed request in " + str(time.time() - startTime) + " seconds"
+    print runtime
 #------------------/End Main/------------------#
 
