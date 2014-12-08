@@ -8,6 +8,6 @@ This is written to accept args from the command line. So, for instance, to get a
 python FeedParse.py TayGriffinSmith 200
 ```
 
-You can add a -t, --t, or any variant of 'true' for the last arg to also write a .csv of the parsed feed
+You can add a -t, --t, or any variant of 'true' for the last arg to also write a .csv of the parsed feed (true by default)
 
 ...where 200 is the max tweets to pull (note: 200 is the max the API will allow). This will write a JSON into the same directory as the script.

@@ -117,9 +117,9 @@ class TwitterUserFeed:
             
     def writeTweetsToJson(self):
         tweets = self.getTweets()
-        jsonOut = '['
+        jsonOut = '['+os.linesep
         for tweet in tweets:
-            jsonOut+=str(tweet)+os.linesep
+            jsonOut+='\t'+str(tweet)+os.linesep
         jsonOut += ']'
         with io.open(self.username+'_TwitterFeed.json','w') as output:
             output.write(unicode(jsonOut))
